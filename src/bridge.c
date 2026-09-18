@@ -278,6 +278,7 @@ static int usb_open(io_service_t service) {
                 (void)t; if (g.dev || !g.retry_service) return;
                 io_service_t svc = g.retry_service;
                 IOObjectRetain(svc);
+                if (g.interest) { IOObjectRelease(g.interest); g.interest = 0; }   /* drop the retry-phase interest */
                 if (usb_open(svc) == 0) { IOObjectRelease(svc); if (g.retry) { CFRunLoopTimerInvalidate(g.retry); CFRelease(g.retry); g.retry = NULL; } if (g.retry_service) { IOObjectRelease(g.retry_service); g.retry_service = 0; } }
                 else IOObjectRelease(svc);
             });

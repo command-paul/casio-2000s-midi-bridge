@@ -18,7 +18,7 @@ jobs:
           mkdir -p dist && cp build/casio-midi-bridge build/midimon build/usbdesc dist/
           tar -C dist -czf "build/casio-midi-bridge-cli-${GITHUB_REF_NAME#v}.tar.gz" .
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
             build/Casio-MIDI-Bridge-*.zip

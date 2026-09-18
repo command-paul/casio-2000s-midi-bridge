@@ -1,5 +1,9 @@
 # casio-midi-bridge
 
+[![CI](https://github.com/command-paul/casio-midi-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/command-paul/casio-midi-bridge/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/command-paul/casio-midi-bridge)](https://github.com/command-paul/casio-midi-bridge/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Makes old Casio USB keyboards work as MIDI controllers on modern macOS.
 
 Casio keyboards sold from roughly 2001 to 2010 (LK-90TV, LK-100, CTK-691, WK-3000,
@@ -14,7 +18,13 @@ Apple entitlements.
 
 Tested on macOS 26 (Apple silicon) with a Casio LK-90TV. Needs macOS 13 or later.
 
+**Download:** grab `Casio-MIDI-Bridge-<version>.zip` from the
+[latest release](https://github.com/command-paul/casio-midi-bridge/releases/latest), unzip,
+drag the app to Applications, open it. See the Gatekeeper note below for the first launch.
+
 ## The app (recommended)
+
+![Casio MIDI Bridge window](docs/app-screenshot.png)
 
 **Casio MIDI Bridge.app** is a small window you open when you want to play. It shows
 whether the keyboard is connected, the name of the MIDI port to pick in your music app,
@@ -145,6 +155,21 @@ device and confirm the wire format.
   <https://support.casio.com/en/support/osdevicePage.php?cid=008002001>
 * Apple documentation for IOUSBLib (`IOUSBDeviceInterface`, `IOUSBInterfaceInterface`) and
   CoreMIDI virtual endpoints (`MIDISourceCreate`, `MIDIDestinationCreate`).
+
+## Privacy and safety
+
+The bridge runs entirely in user space with no administrator rights. It opens only USB
+devices whose vendor/product IDs are on its list, makes no network connections, and stores
+nothing except the port name in the app's own preferences. See [SECURITY.md](SECURITY.md)
+for how to report a problem.
+
+## Acknowledgements
+
+* The ALSA developers, whose one-line quirk for this USB ID documented the wire format.
+* [François Ferland](https://github.com/francoisferland/casiousbmididriver) for the earlier
+  CoreMIDI plugin driver that kept these keyboards usable for years.
+* The code was written with the help of Claude (Anthropic), which is noted in the commit
+  trailers.
 
 ## License
 

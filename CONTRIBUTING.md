@@ -22,6 +22,7 @@ doesn't show up:
 make            # builds build/casio-midi-bridge, build/midimon, build/usbdesc
 make app        # builds "build/Casio MIDI Bridge.app" (swiftc, no Xcode project)
 make icon       # regenerates app/AppIcon.icns from app/icon/make-icon.swift
+make screenshot # re-renders docs/app-screenshot.png from the running app (keyboard connected)
 make test       # unit tests for the USB-MIDI packet codec (no hardware needed)
 ./build/casio-midi-bridge -v      # run in the foreground, print every packet
 ./build/midimon "Casio USB MIDI"  # print decoded MIDI arriving from the virtual port

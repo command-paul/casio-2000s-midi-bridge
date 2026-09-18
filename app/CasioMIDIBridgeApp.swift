@@ -31,6 +31,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Closing the window keeps the bridge alive in the menu bar; Quit disconnects.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationWillTerminate(_ notification: Notification) { bridge_stop() }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // `--snapshot <file.png>`: wait for the keyboard, render the window to a PNG, quit.
+        // Used by `make screenshot` for the README; needs no screen-recording permission
+        // because an app may always draw its own views.
+        if let path = snapshotPath() {
+            NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                if let window = NSApp.windows.first(where: { $0.isVisible && $0.title == "Casio MIDI Bridge" }),
+                   let content = window.contentView {
+                    let view = content.superview ?? content          // superview includes the title bar
+                    if let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                        view.cacheDisplay(in: view.bounds, to: rep)
+                        if let png = rep.representation(using: .png, properties: [:]) {
+                            try? png.write(to: URL(fileURLWithPath: path))
+                            print("wrote \(path)")
+                        }
+                    }
+                }
+                NSApp.terminate(nil)
+            }
+        }
+    }
+}
+
+func snapshotPath() -> String? {
+    let args = CommandLine.arguments
+    guard let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count else { return nil }
+    return args[i + 1]
 }
 
 struct MenuBarContent: View {
@@ -74,6 +103,9 @@ final class BridgeModel: ObservableObject {
         let t = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in self?.refresh() }
         RunLoop.main.add(t, forMode: .common)
         timer = t
+        if snapshotPath() != nil {   // give the screenshot some activity to show
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.playTestNotes() }
+        }
     }
 
     func refresh() {
