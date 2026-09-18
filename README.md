@@ -25,7 +25,7 @@ keyboard is disconnected again. Nothing runs in the background unless you ask fo
 Build and install it with Xcode Command Line Tools (`xcode-select --install`):
 
 ```bash
-git clone https://github.com/<you>/casio-midi-bridge.git
+git clone https://github.com/command-paul/casio-midi-bridge.git
 cd casio-midi-bridge
 make install-app        # builds, copies to /Applications, opens it
 ```
