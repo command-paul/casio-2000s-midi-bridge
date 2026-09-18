@@ -33,6 +33,7 @@ final class BridgeModel: ObservableObject {
     @Published var launchAtLogin = false
     @Published var portName: String
     private var timer: Timer?
+    private var ticks = 0
 
     init() {
         portName = UserDefaults.standard.string(forKey: "portName") ?? "Casio USB MIDI"
@@ -48,6 +49,8 @@ final class BridgeModel: ObservableObject {
         var s = bridge_stats()
         bridge_get_stats(&s)
         stats = s
+        ticks += 1
+        if ticks % 10 == 0 { checkAgent() }
     }
 
     func rename(to name: String) {
@@ -162,6 +165,7 @@ struct ContentView: View {
             Toggle("Open at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
             Text("Keep this window open (or minimized) while you play. Quitting disconnects the keyboard.  ·  v\(version)")
                 .font(.footnote).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)
         .frame(width: 460)
@@ -179,6 +183,7 @@ struct ContentView: View {
                 if connected || s.busy != 0 {
                     Text("\(cString(s.device_desc))  ·  USB \(String(format: "%04X:%04X", s.vid, s.pid))")
                         .font(.callout).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text("Plug the keyboard in with a USB cable and switch it on.")
                         .font(.callout).foregroundStyle(.secondary)
@@ -195,6 +200,7 @@ struct ContentView: View {
                 Text("The background service is also installed.").bold()
                 Text("Only one program can own the keyboard at a time. Stop the service to let this app handle it; you can bring it back later with `make install`.")
                     .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button("Stop background service") { model.stopAgent() }
             }
         }
@@ -216,6 +222,7 @@ struct ContentView: View {
                      ? "Pick “\(model.portName)” as the input in GarageBand, Logic or any other music app."
                      : "This port appears in music apps as soon as the keyboard is connected.")
                     .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.top, 4)
         }
@@ -225,9 +232,9 @@ struct ContentView: View {
         GroupBox("Activity") {
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 GridRow {
-                    Text("Connected").foregroundStyle(.secondary)
+                    Text("Connected for").foregroundStyle(.secondary)
                     if connected {
-                        Text("\(Date(timeIntervalSinceReferenceDate: s.connected_since), style: .relative) ago")
+                        Text(Date(timeIntervalSinceReferenceDate: s.connected_since), style: .relative)
                     } else { Text("—") }
                 }
                 GridRow {
