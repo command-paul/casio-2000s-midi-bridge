@@ -12,17 +12,48 @@ struct CasioMIDIBridgeApp: App {
     @StateObject private var model = BridgeModel()
 
     var body: some Scene {
-        WindowGroup("Casio MIDI Bridge") {
+        Window("Casio MIDI Bridge", id: "main") {
             ContentView().environmentObject(model)
         }
         .windowResizability(.contentSize)
         .commands { CommandGroup(replacing: .newItem) {} }
+
+        // Menu bar icon: filled keys while a keyboard is connected, outline otherwise.
+        MenuBarExtra {
+            MenuBarContent().environmentObject(model)
+        } label: {
+            Image(systemName: model.stats.connected != 0 ? "pianokeys.inverse" : "pianokeys")
+        }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    // Closing the window keeps the bridge alive in the menu bar; Quit disconnects.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationWillTerminate(_ notification: Notification) { bridge_stop() }
+}
+
+struct MenuBarContent: View {
+    @EnvironmentObject var model: BridgeModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        let s = model.stats
+        let connected = s.connected != 0
+        Text(connected ? "Keyboard connected" : (s.busy != 0 ? "Keyboard in use by another program" : "Waiting for keyboard"))
+        if connected {
+            Text("Port: \(cString(s.port_name))")
+            Text("\(s.msgs_in) received · \(s.msgs_out) sent")
+        }
+        Divider()
+        Button("Show Window") {
+            openWindow(id: "main")
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        Button("Play Test Notes on Keyboard") { model.playTestNotes() }.disabled(!connected)
+        Divider()
+        Button("Quit Casio MIDI Bridge") { NSApp.terminate(nil) }
+    }
 }
 
 // MARK: - Model
@@ -163,7 +194,7 @@ struct ContentView: View {
                 Spacer()
             }
             Toggle("Open at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
-            Text("Keep this window open (or minimized) while you play. Quitting disconnects the keyboard.  ·  v\(version)")
+            Text("Closing this window keeps the bridge running in the menu bar (look for the piano keys icon). Quit to disconnect the keyboard.  ·  v\(version)")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
