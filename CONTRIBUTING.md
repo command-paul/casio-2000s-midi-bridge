@@ -20,6 +20,8 @@ doesn't show up:
 
 ```bash
 make            # builds build/casio-midi-bridge, build/midimon, build/usbdesc
+make app        # builds "build/Casio MIDI Bridge.app" (swiftc, no Xcode project)
+make icon       # regenerates app/AppIcon.icns from app/icon/make-icon.swift
 make test       # unit tests for the USB-MIDI packet codec (no hardware needed)
 ./build/casio-midi-bridge -v      # run in the foreground, print every packet
 ./build/midimon "Casio USB MIDI"  # print decoded MIDI arriving from the virtual port
@@ -32,10 +34,14 @@ before running the bridge by hand; only one process can own the USB interface.
 
 * `src/usbmidi.h` — pure USB-MIDI 1.0 packet encoder/decoder. No OS dependencies; keep it
   that way so it stays unit-testable.
-* `src/main.c` — IOKit device discovery/hot-plug, endpoint I/O, CoreMIDI virtual ports.
+* `src/bridge.c` / `src/bridge.h` — the core: IOKit device discovery/hot-plug, endpoint I/O,
+  CoreMIDI virtual ports, live stats. Plain C API used by both front ends.
+* `src/cli.c` — command-line front end.
+* `app/` — SwiftUI app front end, Info.plist template, icon.
+* `launchd/` — LaunchAgent template for the headless install.
 * `tools/` — diagnostics.
 * `tests/` — codec tests, run by CI on macOS.
 
 ## Style
 
-Plain C, `clang -Wall -Wextra` clean, no external dependencies. Keep it small.
+Plain C and Swift, `clang -Wall -Wextra` and `swiftc` warning-free, no external dependencies. Keep it small.

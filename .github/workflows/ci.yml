@@ -11,6 +11,8 @@ jobs:
         run: make
       - name: Unit tests
         run: make test
+      - name: Build app
+        run: make app
       - name: Smoke test binaries
         run: |
           ./build/casio-midi-bridge --version

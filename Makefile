@@ -10,6 +10,12 @@ PLIST     := $(AGENTS)/$(LABEL).plist
 LOG       := $(HOME)/Library/Logs/$(NAME).log
 UID_      := $(shell id -u)
 
+APP_NAME  := Casio MIDI Bridge
+APP        = $(BUILD)/$(APP_NAME).app
+APP_ID    := com.github.casio-midi-bridge.app
+SWIFTC    ?= swiftc
+SWIFT_SRC := $(wildcard app/*.swift)
+
 CC        ?= clang
 CFLAGS    ?= -O2 -Wall -Wextra
 CFLAGS    += -DVERSION=\"$(VERSION)\" -Wno-deprecated-declarations
@@ -23,8 +29,38 @@ all: $(BINS)
 $(BUILD):
 	mkdir -p $@
 
-$(BUILD)/$(NAME): src/main.c src/usbmidi.h | $(BUILD)
-	$(CC) $(CFLAGS) src/main.c -o $@ $(FW_BRIDGE)
+$(BUILD)/bridge.o: src/bridge.c src/bridge.h src/usbmidi.h | $(BUILD)
+	$(CC) $(CFLAGS) -c src/bridge.c -o $@
+
+$(BUILD)/$(NAME): src/cli.c src/bridge.h $(BUILD)/bridge.o
+	$(CC) $(CFLAGS) src/cli.c $(BUILD)/bridge.o -o $@ $(FW_BRIDGE)
+
+# --- macOS app (SwiftUI front end around the same bridge core) ---
+app: $(BUILD)/bridge.o $(SWIFT_SRC) src/bridge.h app/Info.plist.in app/AppIcon.icns
+	rm -rf "$(APP)"
+	mkdir -p "$(APP)/Contents/MacOS" "$(APP)/Contents/Resources"
+	$(SWIFTC) -O -parse-as-library -import-objc-header src/bridge.h $(SWIFT_SRC) $(BUILD)/bridge.o \
+	    -o "$(APP)/Contents/MacOS/$(APP_NAME)" -framework AppKit -framework SwiftUI -framework ServiceManagement $(FW_BRIDGE)
+	sed -e 's|@VERSION@|$(VERSION)|g' -e 's|@APP_ID@|$(APP_ID)|g' -e 's|@APP_NAME@|$(APP_NAME)|g' app/Info.plist.in > "$(APP)/Contents/Info.plist"
+	cp app/AppIcon.icns "$(APP)/Contents/Resources/AppIcon.icns"
+	codesign --force -s - "$(APP)"
+	@echo "Built $(APP)"
+
+# Regenerate the icon (only needed when app/icon/make-icon.swift changes).
+icon: | $(BUILD)
+	$(SWIFTC) -O app/icon/make-icon.swift -o $(BUILD)/make-icon -framework AppKit
+	rm -rf $(BUILD)/AppIcon.iconset && mkdir -p $(BUILD)/AppIcon.iconset
+	$(BUILD)/make-icon $(BUILD)/AppIcon.iconset
+	iconutil -c icns $(BUILD)/AppIcon.iconset -o app/AppIcon.icns
+
+# Copy the app to /Applications (falls back to ~/Applications) and open it.
+install-app: app
+	@dest=/Applications; [ -w /Applications ] || { dest=$$HOME/Applications; mkdir -p "$$dest"; }; \
+	  rm -rf "$$dest/$(APP_NAME).app" && cp -R "$(APP)" "$$dest/" && echo "Installed to $$dest/$(APP_NAME).app" && open "$$dest/$(APP_NAME).app"
+
+uninstall-app:
+	pkill -x "$(APP_NAME)" 2>/dev/null || true
+	rm -rf "/Applications/$(APP_NAME).app" "$(HOME)/Applications/$(APP_NAME).app"
 
 $(BUILD)/midimon: tools/midimon.c | $(BUILD)
 	$(CC) $(CFLAGS) $< -o $@ -framework CoreMIDI -framework CoreFoundation
@@ -66,4 +102,4 @@ restart:
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all test install uninstall status log restart clean
+.PHONY: all app icon test install uninstall install-app uninstall-app status log restart clean

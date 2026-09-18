@@ -12,34 +12,52 @@ Mac OS X 10.2–10.4 on PowerPC.
 over USB and exposes it as a normal CoreMIDI port. No kernel extension, no `sudo`, no
 Apple entitlements.
 
-Tested on macOS 26 (Apple silicon) with a Casio LK-90TV.
+Tested on macOS 26 (Apple silicon) with a Casio LK-90TV. Needs macOS 13 or later.
 
-## Install
+## The app (recommended)
 
-Requires Xcode Command Line Tools (`xcode-select --install`).
+**Casio MIDI Bridge.app** is a small window you open when you want to play. It shows
+whether the keyboard is connected, the name of the MIDI port to pick in your music app,
+live counters and the last message in each direction, a button that plays a few test notes
+on the keyboard, and an "Open at login" switch. Quit it (or close the window) and the
+keyboard is disconnected again. Nothing runs in the background unless you ask for it.
+
+Build and install it with Xcode Command Line Tools (`xcode-select --install`):
 
 ```bash
 git clone https://github.com/<you>/casio-midi-bridge.git
 cd casio-midi-bridge
-make
-make install
+make install-app        # builds, copies to /Applications, opens it
 ```
 
-`make install` copies the binary to `~/.local/bin` and registers a LaunchAgent that starts
-the bridge at login and restarts it if it ever dies. Plug in the keyboard and a port named
-**"Casio USB MIDI"** appears. Give it a different name with:
-
-```bash
-make install PORT_NAME="Casio LK-90TV"
-```
-
-Then in GarageBand, add a Software Instrument track and play. In Logic the port is listed
-under Settings → MIDI → Inputs. Audio MIDI Setup → Window → Show MIDI Studio shows it too.
+Plug in the keyboard, switch it on, and the port **"Casio USB MIDI"** appears (rename it in
+the app if you like). In GarageBand, add a Software Instrument track and play. In Logic the
+port is listed under Settings → MIDI → Inputs. Audio MIDI Setup → Window → Show MIDI Studio
+shows it too.
 
 Both directions work: notes and controllers go in, and anything you send to the port
 (a MIDI file, a DAW track) plays on the keyboard's own sounds.
 
-## Manage
+Prebuilt downloads are not signed with an Apple Developer ID, so if you get one from a
+release page macOS will refuse to open it until you right-click → Open once, or run
+`xattr -d com.apple.quarantine "/Applications/Casio MIDI Bridge.app"`. Building from
+source avoids that entirely. `make uninstall-app` removes it.
+
+## The headless service (advanced)
+
+If you would rather have the bridge always on with no window, the same core is available
+as a command-line tool plus a LaunchAgent:
+
+```bash
+make
+make install                            # binary in ~/.local/bin, agent starts at login
+make install PORT_NAME="Casio LK-90TV"  # custom port name
+```
+
+Only one program can own the keyboard at a time. If the service is running when you open
+the app, the app says so and offers to stop it.
+
+## Manage the service
 
 ```bash
 make status      # is the agent running? last log lines
@@ -58,6 +76,7 @@ the USB interface):
 ## Tools
 
 * `build/midimon [port name]` prints decoded MIDI as it arrives from the virtual port.
+  (Build the tools with `make`.)
 * `build/usbdesc [vid [pid]]` dumps USB descriptors of attached Casio devices, for adding
   new models (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
@@ -70,7 +89,7 @@ endpoint, and the data on the wire is standard USB-MIDI 1.0 four-byte event pack
 Linux has handled this ID for years with a one-line quirk (`QUIRK_MIDI_YAMAHA` in
 `sound/usb/quirks-table.h`).
 
-The bridge:
+The core (`src/bridge.c`, shared by the app and the CLI):
 
 1. Registers IOKit matching notifications for the known USB IDs, so it reacts to
    plug/unplug without polling.
@@ -81,6 +100,12 @@ The bridge:
 4. Streams IN packets to the source and encodes destination traffic into OUT packets.
    The codec (`src/usbmidi.h`) handles SysEx of any length, running status and realtime
    bytes, and is covered by unit tests (`make test`).
+5. If another process already owns the keyboard it does not fight for it; it reports
+   "in use" and retries every few seconds.
+
+The app (`app/`) is a single SwiftUI file on top of that C API; the CLI (`src/cli.c`) is
+a few dozen lines. Everything builds with `clang`/`swiftc` from Command Line Tools, no
+Xcode project.
 
 ## Supported hardware
 

@@ -1,6 +1,7 @@
 /*
- * casio-midi-bridge — user-space CoreMIDI bridge for Casio USB keyboards that are not
- * USB-MIDI class compliant (USB ID 07CF:6802 and friends) and therefore get no port on macOS.
+ * bridge.c — core of casio-midi-bridge: user-space CoreMIDI bridge for Casio USB keyboards
+ * that are not USB-MIDI class compliant (USB ID 07CF:6802 and friends) and therefore get no
+ * port on macOS. Public API in bridge.h; used by src/cli.c and the app in app/.
  *
  * How it works:
  *   - IOKit matching notifications tell us when a known keyboard is plugged in or removed.
@@ -18,13 +19,13 @@
 #include <IOKit/IOKitLib.h>
 #include <IOKit/IOMessage.h>
 #include <IOKit/usb/IOUSBLib.h>
-#include <getopt.h>
 #include <mach/mach_time.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "bridge.h"
 #include "usbmidi.h"
 
 #ifndef VERSION
@@ -42,9 +43,8 @@ static const device_id known_ids[] = {
 
 typedef struct {
     /* options */
-    const char *port_name;
+    char port_name[64];
     int verbose;
-    int vid_override, pid_override;
 
     /* USB state (valid while a keyboard is open) */
     io_service_t service;
@@ -62,18 +62,33 @@ typedef struct {
     usbmidi_encoder enc;
     uint8_t out_buf[64];
     int out_len;
-    pthread_mutex_t lock;   /* guards intf/out_buf between the run loop and MIDI threads */
+    pthread_mutex_t lock;   /* guards intf/out_buf/stats between the run loop and MIDI threads */
 
     IONotificationPortRef notify;
+    io_iterator_t iters[8]; int n_iters;
+    CFRunLoopTimerRef retry;        /* re-open attempts while another process holds the device */
+    io_service_t retry_service;
+    int running;
+    bridge_stats stats;
 } bridge;
 
-static bridge g = { .port_name = "Casio USB MIDI", .vid_override = -1, .pid_override = -1,
-                    .lock = PTHREAD_MUTEX_INITIALIZER };
+static bridge g = { .lock = PTHREAD_MUTEX_INITIALIZER };
+
+static double now_abs(void) { return CFAbsoluteTimeGetCurrent(); }
 
 static void logmsg(const char *fmt, ...) {
     va_list ap; va_start(ap, fmt);
     fprintf(stderr, "[casio-midi-bridge] "); vfprintf(stderr, fmt, ap); fputc('\n', stderr);
     va_end(ap);
+}
+static void logerr(const char *fmt, ...) {
+    va_list ap; va_start(ap, fmt);
+    pthread_mutex_lock(&g.lock);
+    vsnprintf(g.stats.last_error, sizeof g.stats.last_error, fmt, ap);
+    g.stats.errors++;
+    pthread_mutex_unlock(&g.lock);
+    va_end(ap);
+    fprintf(stderr, "[casio-midi-bridge] error: %s\n", g.stats.last_error);
 }
 static void logpkt(const char *dir, const uint8_t p[4]) {
     if (g.verbose) fprintf(stderr, "  %s %02X %02X %02X %02X\n", dir, p[0], p[1], p[2], p[3]);
@@ -106,6 +121,14 @@ static void midi_create_ports(uint16_t vid, uint16_t pid, const char *desc) {
     CFRelease(model);
     usbmidi_encoder_init(&g.enc, 0);
     g.out_len = 0;
+    pthread_mutex_lock(&g.lock);
+    g.stats.connected = 1; g.stats.busy = 0; g.stats.vid = vid; g.stats.pid = pid;
+    g.stats.connected_since = now_abs();
+    g.stats.msgs_in = g.stats.msgs_out = g.stats.notes_in = g.stats.bytes_in = g.stats.bytes_out = 0;
+    g.stats.last_in_len = g.stats.last_out_len = 0;
+    snprintf(g.stats.device_desc, sizeof g.stats.device_desc, "%s", desc);
+    snprintf(g.stats.port_name, sizeof g.stats.port_name, "%s", g.port_name);
+    pthread_mutex_unlock(&g.lock);
 }
 
 /* ------------------------------------------------------------------ USB -> MIDI */
@@ -116,18 +139,21 @@ static void on_usb_in(void *refcon, IOReturn result, void *arg0) {
     (void)refcon;
     size_t n = (size_t)arg0;
     if (!g.intf) return;                            /* closed while a read was in flight */
-    if (result == kIOReturnAborted || result == kIOReturnNotResponding ||
-        result == kIOReturnNoDevice || result == kIOReturnNotAttached) {
-        logmsg("read stopped (0x%x), closing device", result);
-        CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopDefaultMode, ^{ usb_close(); });
+    if (result != kIOReturnSuccess) {
+        if (result == kIOReturnAborted || result == kIOReturnNoDevice || result == kIOReturnNotAttached)
+            logmsg("read stopped (0x%x), closing device", result);
+        else
+            logerr("USB read failed (0x%x), closing device", result);
+        CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopCommonModes, ^{ usb_close(); });
         CFRunLoopWakeUp(CFRunLoopGetMain());
         return;
     }
-    if (result == kIOReturnSuccess && n >= 4) {
+    if (n >= 4) {
         Byte buf[1024];
         MIDIPacketList *pl = (MIDIPacketList *)buf;
         MIDIPacket *pkt = MIDIPacketListInit(pl);
         MIDITimeStamp now = mach_absolute_time();
+        pthread_mutex_lock(&g.lock);
         for (size_t i = 0; i + 4 <= n; i += 4) {
             const uint8_t *p = g.in_buf + i;
             size_t len = usbmidi_decode(p);
@@ -135,15 +161,17 @@ static void on_usb_in(void *refcon, IOReturn result, void *arg0) {
             logpkt("IN ", p);
             pkt = MIDIPacketListAdd(pl, sizeof buf, pkt, now, len, p + 1);
             if (!pkt) break;
+            g.stats.msgs_in++; g.stats.bytes_in += len;
+            if ((p[1] & 0xF0) == 0x90 && p[3]) g.stats.notes_in++;
+            if (p[1] != 0xFE) { memcpy(g.stats.last_in, p + 1, 3); g.stats.last_in_len = (uint8_t)len; g.stats.last_in_time = now_abs(); }
         }
+        pthread_mutex_unlock(&g.lock);
         if (pl->numPackets) MIDIReceived(g.src, pl);
-    } else if (result != kIOReturnSuccess) {
-        logmsg("read error 0x%x", result);
     }
     IOReturn r = (*g.intf)->ReadPipeAsync(g.intf, g.in_pipe, g.in_buf, sizeof g.in_buf, on_usb_in, NULL);
     if (r) {
-        logmsg("ReadPipeAsync failed 0x%x, closing device", r);
-        CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopDefaultMode, ^{ usb_close(); });
+        logerr("ReadPipeAsync failed (0x%x), closing device", r);
+        CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopCommonModes, ^{ usb_close(); });
         CFRunLoopWakeUp(CFRunLoopGetMain());
     }
 }
@@ -153,7 +181,7 @@ static void on_usb_in(void *refcon, IOReturn result, void *arg0) {
 static void usb_flush_out(void) {
     if (!g.out_len || !g.intf) { g.out_len = 0; return; }
     IOReturn r = (*g.intf)->WritePipe(g.intf, g.out_pipe, g.out_buf, (UInt32)g.out_len);
-    if (r) logmsg("write error 0x%x", r);
+    if (r) logerr("USB write failed (0x%x)", r);
     g.out_len = 0;
 }
 static void emit_out(void *ctx, const uint8_t pkt[4]) {
@@ -161,6 +189,9 @@ static void emit_out(void *ctx, const uint8_t pkt[4]) {
     logpkt("OUT", pkt);
     memcpy(g.out_buf + g.out_len, pkt, 4);
     g.out_len += 4;
+    size_t len = usbmidi_decode(pkt);
+    g.stats.msgs_out++; g.stats.bytes_out += len;
+    memcpy(g.stats.last_out, pkt + 1, 3); g.stats.last_out_len = (uint8_t)len; g.stats.last_out_time = now_abs();
     if (g.out_len >= g.out_max) usb_flush_out();
 }
 static void on_midi_out(const MIDIPacketList *pl, void *rc, void *src) {
@@ -175,23 +206,42 @@ static void on_midi_out(const MIDIPacketList *pl, void *rc, void *src) {
     pthread_mutex_unlock(&g.lock);
 }
 
+int bridge_send(const uint8_t *midi, size_t len) {
+    pthread_mutex_lock(&g.lock);
+    int ok = g.intf != NULL;
+    if (ok) { usbmidi_encode(&g.enc, midi, len, emit_out, NULL); usb_flush_out(); }
+    pthread_mutex_unlock(&g.lock);
+    return ok ? 0 : -1;
+}
+
 /* ------------------------------------------------------------------ USB open/close */
 
 static void usb_close(void) {
     pthread_mutex_lock(&g.lock);
     int was_open = g.dev != NULL;
-    if (g.evtsrc) { CFRunLoopRemoveSource(CFRunLoopGetMain(), g.evtsrc, kCFRunLoopDefaultMode); g.evtsrc = NULL; }
+    if (g.evtsrc) { CFRunLoopRemoveSource(CFRunLoopGetMain(), g.evtsrc, kCFRunLoopCommonModes); g.evtsrc = NULL; }
     if (g.intf) { (*g.intf)->USBInterfaceClose(g.intf); (*g.intf)->Release(g.intf); g.intf = NULL; }
     if (g.dev)  { (*g.dev)->USBDeviceClose(g.dev); (*g.dev)->Release(g.dev); g.dev = NULL; }
     if (g.interest) { IOObjectRelease(g.interest); g.interest = 0; }
     if (g.service)  { IOObjectRelease(g.service); g.service = 0; }
+    g.stats.connected = 0; g.stats.busy = 0; g.stats.connected_since = 0;
     pthread_mutex_unlock(&g.lock);
     if (was_open) { midi_dispose_ports(); logmsg("keyboard disconnected"); }
+}
+
+static void retry_cancel(void) {
+    if (g.retry) { CFRunLoopTimerInvalidate(g.retry); CFRelease(g.retry); g.retry = NULL; }
+    if (g.retry_service) { IOObjectRelease(g.retry_service); g.retry_service = 0; }
+    pthread_mutex_lock(&g.lock); g.stats.busy = 0; pthread_mutex_unlock(&g.lock);
 }
 
 static void on_device_interest(void *refcon, io_service_t service, natural_t msg, void *arg) {
     (void)refcon; (void)arg;
     if (msg == kIOMessageServiceIsTerminated && service == g.service) usb_close();
+}
+static void on_retry_interest(void *refcon, io_service_t service, natural_t msg, void *arg) {
+    (void)refcon; (void)arg;
+    if (msg == kIOMessageServiceIsTerminated && service == g.retry_service) { logmsg("busy keyboard unplugged"); retry_cancel(); }
 }
 
 static const device_id *lookup_id(uint16_t vid, uint16_t pid, device_id *scratch) {
@@ -203,7 +253,7 @@ static const device_id *lookup_id(uint16_t vid, uint16_t pid, device_id *scratch
 static int usb_open(io_service_t service) {
     IOCFPlugInInterface **plug; SInt32 score; IOReturn r;
     if (IOCreatePlugInInterfaceForService(service, kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID, &plug, &score)) {
-        logmsg("could not create device plug-in"); return -1; }
+        logerr("could not create device plug-in"); return -1; }
     (*plug)->QueryInterface(plug, CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID182), (LPVOID *)&g.dev);
     (*plug)->Release(plug);
 
@@ -212,28 +262,50 @@ static int usb_open(io_service_t service) {
     logmsg("found %04X:%04X %s", vid, pid, id->desc);
 
     r = (*g.dev)->USBDeviceOpen(g.dev);
-    if (r == kIOReturnExclusiveAccess) { logmsg("device held by another process, seizing it"); r = (*g.dev)->USBDeviceOpenSeize(g.dev); }
-    if (r) { logmsg("USBDeviceOpen failed 0x%x", r); goto fail; }
+    if (r == kIOReturnExclusiveAccess) {
+        /* Another copy of the bridge (e.g. the LaunchAgent) owns it. Don't fight; report and retry. */
+        (*g.dev)->Release(g.dev); g.dev = NULL;
+        pthread_mutex_lock(&g.lock);
+        g.stats.busy = 1; g.stats.vid = vid; g.stats.pid = pid;
+        snprintf(g.stats.device_desc, sizeof g.stats.device_desc, "%s", id->desc);
+        snprintf(g.stats.last_error, sizeof g.stats.last_error, "keyboard is in use by another program (is the background service running?)");
+        pthread_mutex_unlock(&g.lock);
+        if (!g.retry) {
+            logmsg("keyboard is in use by another program, will retry every 3 s");
+            g.retry_service = service; IOObjectRetain(service);
+            IOServiceAddInterestNotification(g.notify, service, kIOGeneralInterest, on_retry_interest, NULL, &g.interest);
+            g.retry = CFRunLoopTimerCreateWithHandler(NULL, CFAbsoluteTimeGetCurrent() + 3, 3, 0, 0, ^(CFRunLoopTimerRef t) {
+                (void)t; if (g.dev || !g.retry_service) return;
+                io_service_t svc = g.retry_service;
+                IOObjectRetain(svc);
+                if (usb_open(svc) == 0) { IOObjectRelease(svc); if (g.retry) { CFRunLoopTimerInvalidate(g.retry); CFRelease(g.retry); g.retry = NULL; } if (g.retry_service) { IOObjectRelease(g.retry_service); g.retry_service = 0; } }
+                else IOObjectRelease(svc);
+            });
+            CFRunLoopAddTimer(CFRunLoopGetMain(), g.retry, kCFRunLoopCommonModes);
+        }
+        return -1;
+    }
+    if (r) { logerr("USBDeviceOpen failed (0x%x)", r); goto fail; }
 
     UInt8 cfg = 0; (*g.dev)->GetConfiguration(g.dev, &cfg);
     if (cfg == 0) {
         IOUSBConfigurationDescriptorPtr cd;
-        if ((*g.dev)->GetConfigurationDescriptorPtr(g.dev, 0, &cd)) { logmsg("no configuration descriptor"); goto fail; }
-        if ((r = (*g.dev)->SetConfiguration(g.dev, cd->bConfigurationValue))) { logmsg("SetConfiguration failed 0x%x", r); goto fail; }
+        if ((*g.dev)->GetConfigurationDescriptorPtr(g.dev, 0, &cd)) { logerr("no configuration descriptor"); goto fail; }
+        if ((r = (*g.dev)->SetConfiguration(g.dev, cd->bConfigurationValue))) { logerr("SetConfiguration failed (0x%x)", r); goto fail; }
     }
 
     IOUSBFindInterfaceRequest req = { kIOUSBFindInterfaceDontCare, kIOUSBFindInterfaceDontCare,
                                       kIOUSBFindInterfaceDontCare, kIOUSBFindInterfaceDontCare };
     io_iterator_t it;
-    if ((*g.dev)->CreateInterfaceIterator(g.dev, &req, &it)) { logmsg("interface iterator failed"); goto fail; }
+    if ((*g.dev)->CreateInterfaceIterator(g.dev, &req, &it)) { logerr("interface iterator failed"); goto fail; }
     io_service_t isvc = IOIteratorNext(it); IOObjectRelease(it);
-    if (!isvc) { logmsg("device has no USB interface"); goto fail; }
+    if (!isvc) { logerr("device has no USB interface"); goto fail; }
     kern_return_t kr = IOCreatePlugInInterfaceForService(isvc, kIOUSBInterfaceUserClientTypeID, kIOCFPlugInInterfaceID, &plug, &score);
     IOObjectRelease(isvc);
-    if (kr) { logmsg("could not create interface plug-in"); goto fail; }
+    if (kr) { logerr("could not create interface plug-in"); goto fail; }
     (*plug)->QueryInterface(plug, CFUUIDGetUUIDBytes(kIOUSBInterfaceInterfaceID), (LPVOID *)&g.intf);
     (*plug)->Release(plug);
-    if ((r = (*g.intf)->USBInterfaceOpen(g.intf))) { logmsg("USBInterfaceOpen failed 0x%x", r); goto fail; }
+    if ((r = (*g.intf)->USBInterfaceOpen(g.intf))) { logerr("USBInterfaceOpen failed (0x%x)", r); goto fail; }
 
     UInt8 nep = 0; (*g.intf)->GetNumEndpoints(g.intf, &nep);
     g.in_pipe = g.out_pipe = 0; g.out_max = 64;
@@ -246,17 +318,17 @@ static int usb_open(io_service_t service) {
         if (dir == kUSBIn  && !g.in_pipe)  g.in_pipe = i;
         if (dir == kUSBOut && !g.out_pipe) { g.out_pipe = i; g.out_max = mps < 64 ? mps : 64; }
     }
-    if (!g.in_pipe || !g.out_pipe) { logmsg("could not find IN and OUT endpoints"); goto fail; }
+    if (!g.in_pipe || !g.out_pipe) { logerr("could not find IN and OUT endpoints"); goto fail; }
 
-    if ((*g.intf)->CreateInterfaceAsyncEventSource(g.intf, &g.evtsrc)) { logmsg("async event source failed"); goto fail; }
-    CFRunLoopAddSource(CFRunLoopGetMain(), g.evtsrc, kCFRunLoopDefaultMode);
+    if ((*g.intf)->CreateInterfaceAsyncEventSource(g.intf, &g.evtsrc)) { logerr("async event source failed"); goto fail; }
+    CFRunLoopAddSource(CFRunLoopGetMain(), g.evtsrc, kCFRunLoopCommonModes);
 
     g.service = service; IOObjectRetain(service);
     IOServiceAddInterestNotification(g.notify, service, kIOGeneralInterest, on_device_interest, NULL, &g.interest);
 
     midi_create_ports(vid, pid, id->desc);
     if ((r = (*g.intf)->ReadPipeAsync(g.intf, g.in_pipe, g.in_buf, sizeof g.in_buf, on_usb_in, NULL))) {
-        logmsg("ReadPipeAsync failed 0x%x", r); goto fail; }
+        logerr("ReadPipeAsync failed (0x%x)", r); goto fail; }
     logmsg("keyboard connected, MIDI port \"%s\" is up", g.port_name);
     return 0;
 
@@ -283,61 +355,50 @@ static int watch(uint16_t vid, uint16_t pid) {
     CFRelease(nv); CFRelease(np);
     io_iterator_t it;
     if (IOServiceAddMatchingNotification(g.notify, kIOFirstMatchNotification, m, on_device_added, NULL, &it)) return -1;
+    if (g.n_iters < (int)(sizeof g.iters / sizeof g.iters[0])) g.iters[g.n_iters++] = it;
     on_device_added(NULL, it);   /* arm the notification and pick up already-attached devices */
     return 0;
 }
 
-/* ------------------------------------------------------------------ main */
+/* ------------------------------------------------------------------ public API */
 
-static void on_signal(int s) { (void)s; CFRunLoopStop(CFRunLoopGetMain()); }
+int bridge_start(const char *port_name, int vid, int pid, int verbose) {
+    if (g.running) return 0;
+    snprintf(g.port_name, sizeof g.port_name, "%s", port_name && *port_name ? port_name : "Casio USB MIDI");
+    g.verbose = verbose;
+    memset(&g.stats, 0, sizeof g.stats);
+    snprintf(g.stats.port_name, sizeof g.stats.port_name, "%s", g.port_name);
 
-static void usage(FILE *f) {
-    fprintf(f,
-        "casio-midi-bridge %s — CoreMIDI port for non-class-compliant Casio USB keyboards\n\n"
-        "usage: casio-midi-bridge [options]\n"
-        "  -n, --name NAME   name of the virtual MIDI port (default \"Casio USB MIDI\")\n"
-        "      --vid 0xVVVV  only watch this USB vendor ID (with --pid)\n"
-        "      --pid 0xPPPP  only watch this USB product ID\n"
-        "  -v, --verbose     log every USB-MIDI packet\n"
-        "  -l, --list        list built-in USB IDs and exit\n"
-        "  -V, --version     print version and exit\n"
-        "  -h, --help        this help\n", VERSION);
-}
-
-int main(int argc, char **argv) {
-    static const struct option opts[] = {
-        { "name", required_argument, NULL, 'n' }, { "vid", required_argument, NULL, 1 },
-        { "pid", required_argument, NULL, 2 },    { "verbose", no_argument, NULL, 'v' },
-        { "list", no_argument, NULL, 'l' },       { "version", no_argument, NULL, 'V' },
-        { "help", no_argument, NULL, 'h' },       { 0, 0, 0, 0 } };
-    int c;
-    while ((c = getopt_long(argc, argv, "n:vlVh", opts, NULL)) != -1) {
-        switch (c) {
-        case 'n': g.port_name = optarg; break;
-        case 1: g.vid_override = (int)strtol(optarg, NULL, 0); break;
-        case 2: g.pid_override = (int)strtol(optarg, NULL, 0); break;
-        case 'v': g.verbose = 1; break;
-        case 'l': for (size_t i = 0; i < N_KNOWN; i++) printf("%04X:%04X  %s\n", known_ids[i].vid, known_ids[i].pid, known_ids[i].desc); return 0;
-        case 'V': printf("casio-midi-bridge %s\n", VERSION); return 0;
-        case 'h': usage(stdout); return 0;
-        default: usage(stderr); return 2;
-        }
-    }
-    if ((g.vid_override >= 0) != (g.pid_override >= 0)) { fprintf(stderr, "--vid and --pid must be given together\n"); return 2; }
-
-    signal(SIGINT, on_signal); signal(SIGTERM, on_signal);
-    if (MIDIClientCreate(CFSTR("casio-midi-bridge"), NULL, NULL, &g.client)) { logmsg("MIDIClientCreate failed"); return 1; }
-
+    if (MIDIClientCreate(CFSTR("casio-midi-bridge"), NULL, NULL, &g.client)) { logerr("MIDIClientCreate failed"); return -1; }
     g.notify = IONotificationPortCreate(kIOMainPortDefault);
-    CFRunLoopAddSource(CFRunLoopGetMain(), IONotificationPortGetRunLoopSource(g.notify), kCFRunLoopDefaultMode);
-    if (g.vid_override >= 0) watch((uint16_t)g.vid_override, (uint16_t)g.pid_override);
+    CFRunLoopAddSource(CFRunLoopGetMain(), IONotificationPortGetRunLoopSource(g.notify), kCFRunLoopCommonModes);
+    g.running = 1;
+    if (vid >= 0 && pid >= 0) watch((uint16_t)vid, (uint16_t)pid);
     else for (size_t i = 0; i < N_KNOWN; i++) watch(known_ids[i].vid, known_ids[i].pid);
-
-    if (!g.dev) logmsg("waiting for a keyboard to be plugged in...");
-    CFRunLoopRun();
-
-    usb_close();
-    MIDIClientDispose(g.client);
-    logmsg("exiting");
+    if (!g.dev && !g.retry) logmsg("waiting for a keyboard to be plugged in...");
     return 0;
 }
+
+void bridge_stop(void) {
+    if (!g.running) return;
+    retry_cancel();
+    usb_close();
+    for (int i = 0; i < g.n_iters; i++) IOObjectRelease(g.iters[i]);
+    g.n_iters = 0;
+    if (g.notify) { CFRunLoopRemoveSource(CFRunLoopGetMain(), IONotificationPortGetRunLoopSource(g.notify), kCFRunLoopCommonModes);
+                    IONotificationPortDestroy(g.notify); g.notify = NULL; }
+    if (g.client) { MIDIClientDispose(g.client); g.client = 0; }
+    g.running = 0;
+}
+
+void bridge_get_stats(bridge_stats *out) {
+    pthread_mutex_lock(&g.lock);
+    *out = g.stats;
+    pthread_mutex_unlock(&g.lock);
+}
+
+void bridge_list_known(bridge_id_fn fn, void *ctx) {
+    for (size_t i = 0; i < N_KNOWN; i++) fn(known_ids[i].vid, known_ids[i].pid, known_ids[i].desc, ctx);
+}
+
+const char *bridge_version(void) { return VERSION; }
