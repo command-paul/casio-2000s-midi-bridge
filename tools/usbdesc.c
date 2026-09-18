@@ -36,12 +36,20 @@ static void dump(io_service_t svc) {
 
 int main(int argc, char **argv) {
     long vid = argc > 1 ? strtol(argv[1], NULL, 0) : 0x07CF, pid = argc > 2 ? strtol(argv[2], NULL, 0) : -1;
-    CFMutableDictionaryRef m = IOServiceMatching(kIOUSBDeviceClassName);
-    SInt32 v = (SInt32)vid; CFNumberRef nv = CFNumberCreate(NULL, kCFNumberSInt32Type, &v); CFDictionarySetValue(m, CFSTR(kUSBVendorID), nv); CFRelease(nv);
-    if (pid >= 0) { SInt32 pv = (SInt32)pid; CFNumberRef np = CFNumberCreate(NULL, kCFNumberSInt32Type, &pv); CFDictionarySetValue(m, CFSTR(kUSBProductID), np); CFRelease(np); }
-    io_iterator_t it; if (IOServiceGetMatchingServices(kIOMainPortDefault, m, &it)) { puts("IOKit matching failed"); return 1; }
+    /* IOKit only accepts specific USB key combinations for matching (vendor alone is not one),
+     * so match every USB device and filter here. */
+    io_iterator_t it;
+    if (IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOUSBHostDevice"), &it)) { puts("IOKit matching failed"); return 1; }
     io_service_t svc; int n = 0;
-    while ((svc = IOIteratorNext(it))) { dump(svc); IOObjectRelease(svc); n++; }
+    while ((svc = IOIteratorNext(it))) {
+        CFNumberRef v = IORegistryEntryCreateCFProperty(svc, CFSTR(kUSBVendorID), NULL, 0);
+        CFNumberRef p = IORegistryEntryCreateCFProperty(svc, CFSTR(kUSBProductID), NULL, 0);
+        SInt32 dv = -1, dp = -1;
+        if (v) { CFNumberGetValue(v, kCFNumberSInt32Type, &dv); CFRelease(v); }
+        if (p) { CFNumberGetValue(p, kCFNumberSInt32Type, &dp); CFRelease(p); }
+        if (dv == vid && (pid < 0 || dp == pid)) { dump(svc); n++; }
+        IOObjectRelease(svc);
+    }
     if (!n) printf("no USB device with vendor 0x%04lX%s found\n", vid, pid >= 0 ? " and that product ID" : "");
     return n ? 0 : 1;
 }
