@@ -101,6 +101,26 @@ Any other device with the same descriptor shape can be tried with
 * Apple's MIDIDriverKit (macOS 14+) is the sanctioned way to ship a real driver. It needs a
   paid developer account and a USB transport entitlement granted by Apple.
 
+## References and prior art
+
+No code in this repository is copied from any of these; they were used to identify the
+device and confirm the wire format.
+
+* Linux `snd-usb-audio` quirk table, entry for `07cf:6802` "Casio Keyboard"
+  (`QUIRK_MIDI_YAMAHA`), which established that the data is standard USB-MIDI packets:
+  <https://github.com/torvalds/linux/blob/master/sound/usb/quirks-table.h>
+* USB Implementers Forum, *Universal Serial Bus Device Class Definition for MIDI Devices*
+  1.0 (1999), the packet format in `src/usbmidi.h`: <https://www.usb.org/document-library/usb-midi-devices-10>
+* francoisferland/casiousbmididriver, the earlier CoreMIDI plugin approach, and its issue
+  about the LK-90TV: <https://github.com/francoisferland/casiousbmididriver>,
+  <https://github.com/francoisferland/casiousbmididriver/issues/28>
+* Apple Community thread on Casio USB-MIDI drivers:
+  <https://discussions.apple.com/thread/1198971>
+* Casio's own (discontinued) USB MIDI driver page:
+  <https://support.casio.com/en/support/osdevicePage.php?cid=008002001>
+* Apple documentation for IOUSBLib (`IOUSBDeviceInterface`, `IOUSBInterfaceInterface`) and
+  CoreMIDI virtual endpoints (`MIDISourceCreate`, `MIDIDestinationCreate`).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
