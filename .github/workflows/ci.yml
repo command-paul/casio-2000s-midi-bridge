@@ -1,0 +1,17 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make
+      - name: Unit tests
+        run: make test
+      - name: Smoke test binaries
+        run: |
+          ./build/casio-midi-bridge --version
+          ./build/casio-midi-bridge --list
