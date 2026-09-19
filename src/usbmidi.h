@@ -6,7 +6,7 @@
  *   byte 1-3 : up to three MIDI bytes, zero padded
  * The CIN says how many of the three MIDI bytes are meaningful (see usbmidi_cin_len).
  *
- * Part of casio-midi-bridge. MIT license.
+ * Part of casio-2000s-midi-bridge. MIT license.
  */
 #ifndef USBMIDI_H
 #define USBMIDI_H

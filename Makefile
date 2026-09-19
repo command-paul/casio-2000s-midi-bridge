@@ -1,18 +1,18 @@
-# casio-midi-bridge — see README.md
-NAME      := casio-midi-bridge
-VERSION   := 0.2.0
+# casio-2000s-midi-bridge — see README.md
+NAME      := casio-2000s-midi-bridge
+VERSION   := 0.3.0
 PREFIX    ?= $(HOME)/.local
 BINDIR    := $(PREFIX)/bin
 PORT_NAME ?= Casio USB MIDI
-LABEL     := com.github.casio-midi-bridge
+LABEL     := com.github.casio-2000s-midi-bridge
 AGENTS    := $(HOME)/Library/LaunchAgents
 PLIST     := $(AGENTS)/$(LABEL).plist
 LOG       := $(HOME)/Library/Logs/$(NAME).log
 UID_      := $(shell id -u)
 
-APP_NAME  := Casio MIDI Bridge
+APP_NAME  := Casio 2000s MIDI Bridge
 APP        = $(BUILD)/$(APP_NAME).app
-APP_ID    := com.github.casio-midi-bridge.app
+APP_ID    := com.github.casio-2000s-midi-bridge.app
 SWIFTC    ?= swiftc
 SWIFT_SRC := $(wildcard app/*.swift)
 
@@ -65,10 +65,10 @@ screenshot: app
 	"$(APP)/Contents/MacOS/$(APP_NAME)" --snapshot "$(CURDIR)/docs/app-screenshot.png"
 	@ls -la docs/app-screenshot.png
 
-# Zip the app for distribution (build/Casio-MIDI-Bridge-<version>.zip).
+# Zip the app for distribution (build/Casio-2000s-MIDI-Bridge-<version>.zip).
 dist: app
-	ditto -c -k --keepParent "$(APP)" "$(BUILD)/Casio-MIDI-Bridge-$(VERSION).zip"
-	@echo "Wrote $(BUILD)/Casio-MIDI-Bridge-$(VERSION).zip"
+	ditto -c -k --keepParent "$(APP)" "$(BUILD)/Casio-2000s-MIDI-Bridge-$(VERSION).zip"
+	@echo "Wrote $(BUILD)/Casio-2000s-MIDI-Bridge-$(VERSION).zip"
 
 uninstall-app:
 	pkill -x "$(APP_NAME)" 2>/dev/null || true

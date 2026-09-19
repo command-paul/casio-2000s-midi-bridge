@@ -12,23 +12,23 @@ doesn't show up:
    output into an issue.
 2. If the descriptor shows one interface with a bulk/interrupt IN and OUT endpoint and
    `CS_INTERFACE` descriptors (subtypes 0x01–0x03), the wire format is almost certainly
-   standard USB-MIDI. Try `./build/casio-midi-bridge --vid 0x07CF --pid 0xXXXX -v`.
+   standard USB-MIDI. Try `./build/casio-2000s-midi-bridge --vid 0x07CF --pid 0xXXXX -v`.
 3. If that works, add the ID to `known_ids[]` in `src/main.c` with a short description
    and open a pull request. Please mention the model name in the PR.
 
 ## Development
 
 ```bash
-make            # builds build/casio-midi-bridge, build/midimon, build/usbdesc
-make app        # builds "build/Casio MIDI Bridge.app" (swiftc, no Xcode project)
+make            # builds build/casio-2000s-midi-bridge, build/midimon, build/usbdesc
+make app        # builds "build/Casio 2000s MIDI Bridge.app" (swiftc, no Xcode project)
 make icon       # regenerates app/AppIcon.icns from app/icon/make-icon.swift
 make screenshot # re-renders docs/app-screenshot.png from the running app (keyboard connected)
 make test       # unit tests for the USB-MIDI packet codec (no hardware needed)
-./build/casio-midi-bridge -v      # run in the foreground, print every packet
+./build/casio-2000s-midi-bridge -v      # run in the foreground, print every packet
 ./build/midimon "Casio USB MIDI"  # print decoded MIDI arriving from the virtual port
 ```
 
-Stop the LaunchAgent (`make uninstall` or `launchctl bootout gui/$(id -u)/com.github.casio-midi-bridge`)
+Stop the LaunchAgent (`make uninstall` or `launchctl bootout gui/$(id -u)/com.github.casio-2000s-midi-bridge`)
 before running the bridge by hand; only one process can own the USB interface.
 
 ## Code layout

@@ -1,5 +1,5 @@
 // make-icon.swift — renders the app icon (a piano keyboard on a dark tile) into an .iconset
-// directory. Run via `make icon`. Part of casio-midi-bridge. MIT license.
+// directory. Run via `make icon`. Part of casio-2000s-midi-bridge. MIT license.
 import AppKit
 
 func render(_ px: Int) -> Data {

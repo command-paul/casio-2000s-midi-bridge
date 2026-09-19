@@ -1,7 +1,7 @@
 # Troubleshooting
 
 Answers to the questions people actually search for. If yours isn't here,
-[open an issue](https://github.com/command-paul/casio-midi-bridge/issues/new/choose).
+[open an issue](https://github.com/command-paul/casio-2000s-midi-bridge/issues/new/choose).
 
 ## "Audio MIDI Setup does not show my Casio keyboard"
 
@@ -9,7 +9,7 @@ That's the problem this project exists for. Casio keyboards from roughly 2001–
 `07CF:6802`: LK, CTK, WK, PX, AP, CDP models with a USB port and no "class compliant" claim)
 identify themselves as a vendor-specific USB device, so macOS never creates a MIDI port
 for them. System Information → USB shows the device; Audio MIDI Setup shows nothing.
-Install [Casio MIDI Bridge](../README.md#the-app-recommended); the port appears while the
+Install [Casio 2000s MIDI Bridge](../README.md#the-app-recommended); the port appears while the
 app is running.
 
 Keyboards from about 2011 on (CT-X, CT-S, PX-S, newer Privia, and anything whose manual
@@ -28,9 +28,9 @@ The app only lists a keyboard once macOS sees it on USB. Check, in order:
    software can help; it's the cable, port or keyboard.
 5. If it *is* listed but the app still waits, your model may use a different product ID.
    Build the tools (`make`) and run `./build/usbdesc`, then
-   [open an issue](https://github.com/command-paul/casio-midi-bridge/issues/new?template=keyboard-not-detected.md)
+   [open an issue](https://github.com/command-paul/casio-2000s-midi-bridge/issues/new?template=keyboard-not-detected.md)
    with the output. You can try it immediately with
-   `./build/casio-midi-bridge --vid 0x07CF --pid 0x<yours> -v`.
+   `./build/casio-2000s-midi-bridge --vid 0x07CF --pid 0x<yours> -v`.
 
 ## The app says "Keyboard is in use by another program"
 
@@ -73,13 +73,13 @@ GarageBand can't send MIDI out. Logic, MainStage and most other DAWs can: pick t
 port as the track's MIDI output and the keyboard plays the notes with its own sounds.
 The app's "Play test notes on keyboard" button demonstrates the path works.
 
-## "Casio MIDI Bridge cannot be opened because the developer cannot be verified" / "is damaged"
+## "Casio 2000s MIDI Bridge cannot be opened because the developer cannot be verified" / "is damaged"
 
 The downloaded app isn't notarized (no paid Apple Developer ID). One-time fix: right-click
 the app → Open → Open. If macOS says it's "damaged", remove the quarantine flag instead:
 
 ```bash
-xattr -d com.apple.quarantine "/Applications/Casio MIDI Bridge.app"
+xattr -d com.apple.quarantine "/Applications/Casio 2000s MIDI Bridge.app"
 ```
 
 Building from source (`make install-app`) never triggers this.
@@ -88,15 +88,15 @@ Building from source (`make install-app`) never triggers this.
 
 Nothing the bridge uses is private API, so updates shouldn't break it, but the app is
 rebuilt on every release against the current SDK. Grab the
-[latest release](https://github.com/command-paul/casio-midi-bridge/releases/latest), and
+[latest release](https://github.com/command-paul/casio-2000s-midi-bridge/releases/latest), and
 if it's still broken open an issue with the macOS version and the app's log (Console.app,
-filter "casio-midi-bridge").
+filter "casio-2000s-midi-bridge").
 
 ## Where are the logs?
 
-* App: Console.app → filter "casio-midi-bridge". The app window also shows the last error.
-* Headless service: `~/Library/Logs/casio-midi-bridge.log`, or `make log`.
-* Everything, raw: quit the app and run `./build/casio-midi-bridge -v` in a terminal to see
+* App: Console.app → filter "casio-2000s-midi-bridge". The app window also shows the last error.
+* Headless service: `~/Library/Logs/casio-2000s-midi-bridge.log`, or `make log`.
+* Everything, raw: quit the app and run `./build/casio-2000s-midi-bridge -v` in a terminal to see
   every USB-MIDI packet.
 
 ## Does this work on Intel Macs? Older macOS?

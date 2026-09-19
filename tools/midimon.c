@@ -1,6 +1,6 @@
 /* midimon — print every MIDI message arriving from a CoreMIDI source.
  * Usage: midimon [source name]   (default "Casio USB MIDI"; lists sources if not found)
- * Part of casio-midi-bridge. MIT license. */
+ * Part of casio-2000s-midi-bridge. MIT license. */
 #include <CoreMIDI/CoreMIDI.h>
 #include <stdio.h>
 #include <time.h>

@@ -1,6 +1,6 @@
 /* usbdesc — dump USB configuration descriptors of attached devices (default: all Casio, VID 0x07CF).
  * Usage: usbdesc [vid [pid]]   e.g. usbdesc 0x07CF 0x6802
- * Useful for adding new keyboards; see CONTRIBUTING.md. Part of casio-midi-bridge. MIT license. */
+ * Useful for adding new keyboards; see CONTRIBUTING.md. Part of casio-2000s-midi-bridge. MIT license. */
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/usb/IOUSBLib.h>

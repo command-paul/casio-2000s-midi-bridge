@@ -15,17 +15,17 @@ jobs:
         run: make dist
       - name: Package CLI
         run: |
-          mkdir -p dist && cp build/casio-midi-bridge build/midimon build/usbdesc dist/
-          tar -C dist -czf "build/casio-midi-bridge-cli-${GITHUB_REF_NAME#v}.tar.gz" .
+          mkdir -p dist && cp build/casio-2000s-midi-bridge build/midimon build/usbdesc dist/
+          tar -C dist -czf "build/casio-2000s-midi-bridge-cli-${GITHUB_REF_NAME#v}.tar.gz" .
       - name: Create GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
-            build/Casio-MIDI-Bridge-*.zip
-            build/casio-midi-bridge-cli-*.tar.gz
+            build/Casio-2000s-MIDI-Bridge-*.zip
+            build/casio-2000s-midi-bridge-cli-*.tar.gz
           body: |
-            **Casio MIDI Bridge.app** — unzip, drag to Applications, open.
+            **Casio 2000s MIDI Bridge.app** — unzip, drag to Applications, open.
             The app is not notarized (no paid Apple Developer ID), so the first time macOS may say it
             "cannot verify the developer": right-click the app → Open → Open, or run
-            `xattr -d com.apple.quarantine "/Applications/Casio MIDI Bridge.app"`.
+            `xattr -d com.apple.quarantine "/Applications/Casio 2000s MIDI Bridge.app"`.
             Building from source with `make install-app` avoids this entirely.

@@ -1,4 +1,4 @@
-/* cli.c — command-line front end for casio-midi-bridge. See README.md. MIT license. */
+/* cli.c — command-line front end for casio-2000s-midi-bridge. See README.md. MIT license. */
 #include <CoreFoundation/CoreFoundation.h>
 #include <getopt.h>
 #include <signal.h>
@@ -11,8 +11,8 @@ static void print_id(uint16_t vid, uint16_t pid, const char *desc, void *ctx) { 
 
 static void usage(FILE *f) {
     fprintf(f,
-        "casio-midi-bridge %s — CoreMIDI port for non-class-compliant Casio USB keyboards\n\n"
-        "usage: casio-midi-bridge [options]\n"
+        "casio-2000s-midi-bridge %s — CoreMIDI port for non-class-compliant Casio USB keyboards\n\n"
+        "usage: casio-2000s-midi-bridge [options]\n"
         "  -n, --name NAME   name of the virtual MIDI port (default \"Casio USB MIDI\")\n"
         "      --vid 0xVVVV  only watch this USB vendor ID (with --pid)\n"
         "      --pid 0xPPPP  only watch this USB product ID\n"
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
         case 2: pid = (int)strtol(optarg, NULL, 0); break;
         case 'v': verbose = 1; break;
         case 'l': bridge_list_known(print_id, NULL); return 0;
-        case 'V': printf("casio-midi-bridge %s\n", bridge_version()); return 0;
+        case 'V': printf("casio-2000s-midi-bridge %s\n", bridge_version()); return 0;
         case 'h': usage(stdout); return 0;
         default: usage(stderr); return 2;
         }
@@ -46,6 +46,6 @@ int main(int argc, char **argv) {
     if (bridge_start(name, vid, pid, verbose)) return 1;
     CFRunLoopRun();
     bridge_stop();
-    fprintf(stderr, "[casio-midi-bridge] exiting\n");
+    fprintf(stderr, "[casio-2000s-midi-bridge] exiting\n");
     return 0;
 }

@@ -1,7 +1,7 @@
-# casio-midi-bridge
+# casio-2000s-midi-bridge
 
-[![CI](https://github.com/command-paul/casio-midi-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/command-paul/casio-midi-bridge/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/command-paul/casio-midi-bridge)](https://github.com/command-paul/casio-midi-bridge/releases/latest)
+[![CI](https://github.com/command-paul/casio-2000s-midi-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/command-paul/casio-2000s-midi-bridge/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/command-paul/casio-2000s-midi-bridge)](https://github.com/command-paul/casio-2000s-midi-bridge/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Makes old Casio USB keyboards work as MIDI controllers on modern macOS.
@@ -12,7 +12,7 @@ PX-100, AP-series and many more) all share USB ID `07CF:6802` and are **not USB-
 class compliant**. They plug in, they enumerate, and then nothing happens: no port in
 Audio MIDI Setup, nothing in GarageBand or Logic. There is no macOS driver for them.
 
-`casio-midi-bridge` is a small user-space program that talks to the keyboard directly
+`casio-2000s-midi-bridge` is a small user-space program that talks to the keyboard directly
 over USB and exposes it as a normal CoreMIDI port. No kernel extension, no `sudo`, no
 Apple entitlements.
 
@@ -20,9 +20,9 @@ Tested on macOS 26 (Apple silicon) with a Casio LK-90TV. Needs macOS 13 or later
 
 ## The app (recommended)
 
-![Casio MIDI Bridge window](docs/app-screenshot.png)
+![Casio 2000s MIDI Bridge window](docs/app-screenshot.png)
 
-**Casio MIDI Bridge.app** is a small window you open when you want to play. It shows
+**Casio 2000s MIDI Bridge.app** is a small window you open when you want to play. It shows
 whether the keyboard is connected, the name of the MIDI port to pick in your music app,
 live counters and the last message in each direction, a button that plays a few test notes
 on the keyboard, and an "Open at login" switch. Close the window and it keeps running as a
@@ -30,13 +30,13 @@ piano-keys icon in the menu bar; quit it and the keyboard is disconnected again.
 
 ### Option 1: download the app (no building needed)
 
-1. Get `Casio-MIDI-Bridge-<version>.zip` from the
-   [latest release](https://github.com/command-paul/casio-midi-bridge/releases/latest).
-2. Unzip it and drag **Casio MIDI Bridge** into your Applications folder.
+1. Get `Casio-2000s-MIDI-Bridge-<version>.zip` from the
+   [latest release](https://github.com/command-paul/casio-2000s-midi-bridge/releases/latest).
+2. Unzip it and drag **Casio 2000s MIDI Bridge** into your Applications folder.
 3. First launch only: **right-click the app → Open → Open.** macOS shows a "cannot verify
    the developer" warning because the app is not notarized with a paid Apple Developer ID.
    After that one-time step it opens normally. (Equivalent from a terminal:
-   `xattr -d com.apple.quarantine "/Applications/Casio MIDI Bridge.app"`.)
+   `xattr -d com.apple.quarantine "/Applications/Casio 2000s MIDI Bridge.app"`.)
 
 The app is self-contained: no installer, no extra files, nothing else gets modified.
 Delete it from Applications to uninstall.
@@ -47,8 +47,8 @@ Needs Xcode Command Line Tools (`xcode-select --install`), nothing else. Buildin
 also sidesteps the Gatekeeper warning.
 
 ```bash
-git clone https://github.com/command-paul/casio-midi-bridge.git
-cd casio-midi-bridge
+git clone https://github.com/command-paul/casio-2000s-midi-bridge.git
+cd casio-2000s-midi-bridge
 make install-app        # builds, copies to /Applications, opens it
 ```
 
@@ -98,7 +98,7 @@ Run it by hand to watch packets go by (stop the agent first, only one process ca
 the USB interface):
 
 ```bash
-./build/casio-midi-bridge -v
+./build/casio-2000s-midi-bridge -v
 ```
 
 ## Tools

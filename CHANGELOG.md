@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-09-18
+
+* Renamed to **casio-2000s-midi-bridge** / **Casio 2000s MIDI Bridge.app** to make clear it
+  targets the 2000s-era keyboards. The GitHub URL redirects. The app's bundle identifier
+  changed, so "Open at login" and a custom port name need to be set again after upgrading;
+  delete the old "Casio 2000s MIDI Bridge.app" from Applications.
+* "Not affiliated with Casio" disclaimer in the README, app footer and release notes.
+
 ## 0.2.0 — 2026-09-18
 
 * App: menu bar icon and menu; closing the window keeps the bridge running, Quit disconnects.
@@ -13,7 +21,7 @@
 
 Initial release.
 
-* **Casio MIDI Bridge.app**: a one-window macOS app (macOS 13+) showing connection state,
+* **Casio 2000s MIDI Bridge.app**: a one-window macOS app (macOS 13+) showing connection state,
   port name (renamable), live message counters, last message in each direction, a test-notes
   button, and an "Open at login" switch. Quitting disconnects the keyboard. Detects a running
   headless service and offers to stop it.

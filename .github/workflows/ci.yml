@@ -17,5 +17,5 @@ jobs:
         run: make app
       - name: Smoke test binaries
         run: |
-          ./build/casio-midi-bridge --version
-          ./build/casio-midi-bridge --list
+          ./build/casio-2000s-midi-bridge --version
+          ./build/casio-2000s-midi-bridge --list

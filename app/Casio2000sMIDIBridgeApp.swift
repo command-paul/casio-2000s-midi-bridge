@@ -1,18 +1,18 @@
-// CasioMIDIBridgeApp.swift — the macOS app front end for casio-midi-bridge.
+// Casio2000sMIDIBridgeApp.swift — the macOS app front end for casio-2000s-midi-bridge.
 // One window, quitting (or closing the window) disconnects the keyboard. MIT license.
 import SwiftUI
 import AppKit
 import ServiceManagement
 
-let agentLabel = "com.github.casio-midi-bridge"
+let agentLabel = "com.github.casio-2000s-midi-bridge"
 
 @main
-struct CasioMIDIBridgeApp: App {
+struct Casio2000sMIDIBridgeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var model = BridgeModel()
 
     var body: some Scene {
-        Window("Casio MIDI Bridge", id: "main") {
+        Window("Casio 2000s MIDI Bridge", id: "main") {
             ContentView().environmentObject(model)
         }
         .windowResizability(.contentSize)
@@ -39,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let path = snapshotPath() {
             NSApp.activate(ignoringOtherApps: true)
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
-                if let window = NSApp.windows.first(where: { $0.isVisible && $0.title == "Casio MIDI Bridge" }),
+                if let window = NSApp.windows.first(where: { $0.isVisible && $0.title == "Casio 2000s MIDI Bridge" }),
                    let content = window.contentView {
                     let view = content.superview ?? content          // superview includes the title bar
                     if let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
@@ -81,7 +81,7 @@ struct MenuBarContent: View {
         }
         Button("Play Test Notes on Keyboard") { model.playTestNotes() }.disabled(!connected)
         Divider()
-        Button("Quit Casio MIDI Bridge") { NSApp.terminate(nil) }
+        Button("Quit Casio 2000s MIDI Bridge") { NSApp.terminate(nil) }
     }
 }
 

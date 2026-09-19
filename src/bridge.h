@@ -6,7 +6,7 @@
  * USB event sources on CFRunLoopGetMain() in the common run-loop modes, so it works inside
  * both a bare CFRunLoopRun() and an AppKit application.
  *
- * Part of casio-midi-bridge. MIT license.
+ * Part of casio-2000s-midi-bridge. MIT license.
  */
 #ifndef BRIDGE_H
 #define BRIDGE_H

@@ -1,5 +1,5 @@
 /*
- * bridge.c — core of casio-midi-bridge: user-space CoreMIDI bridge for Casio USB keyboards
+ * bridge.c — core of casio-2000s-midi-bridge: user-space CoreMIDI bridge for Casio USB keyboards
  * that are not USB-MIDI class compliant (USB ID 07CF:6802 and friends) and therefore get no
  * port on macOS. Public API in bridge.h; used by src/cli.c and the app in app/.
  *
@@ -78,7 +78,7 @@ static double now_abs(void) { return CFAbsoluteTimeGetCurrent(); }
 
 static void logmsg(const char *fmt, ...) {
     va_list ap; va_start(ap, fmt);
-    fprintf(stderr, "[casio-midi-bridge] "); vfprintf(stderr, fmt, ap); fputc('\n', stderr);
+    fprintf(stderr, "[casio-2000s-midi-bridge] "); vfprintf(stderr, fmt, ap); fputc('\n', stderr);
     va_end(ap);
 }
 static void logerr(const char *fmt, ...) {
@@ -88,7 +88,7 @@ static void logerr(const char *fmt, ...) {
     g.stats.errors++;
     pthread_mutex_unlock(&g.lock);
     va_end(ap);
-    fprintf(stderr, "[casio-midi-bridge] error: %s\n", g.stats.last_error);
+    fprintf(stderr, "[casio-2000s-midi-bridge] error: %s\n", g.stats.last_error);
 }
 static void logpkt(const char *dir, const uint8_t p[4]) {
     if (g.verbose) fprintf(stderr, "  %s %02X %02X %02X %02X\n", dir, p[0], p[1], p[2], p[3]);
@@ -370,7 +370,7 @@ int bridge_start(const char *port_name, int vid, int pid, int verbose) {
     memset(&g.stats, 0, sizeof g.stats);
     snprintf(g.stats.port_name, sizeof g.stats.port_name, "%s", g.port_name);
 
-    if (MIDIClientCreate(CFSTR("casio-midi-bridge"), NULL, NULL, &g.client)) { logerr("MIDIClientCreate failed"); return -1; }
+    if (MIDIClientCreate(CFSTR("casio-2000s-midi-bridge"), NULL, NULL, &g.client)) { logerr("MIDIClientCreate failed"); return -1; }
     g.notify = IONotificationPortCreate(kIOMainPortDefault);
     CFRunLoopAddSource(CFRunLoopGetMain(), IONotificationPortGetRunLoopSource(g.notify), kCFRunLoopCommonModes);
     g.running = 1;
