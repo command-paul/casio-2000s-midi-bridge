@@ -18,10 +18,6 @@ Apple entitlements.
 
 Tested on macOS 26 (Apple silicon) with a Casio LK-90TV. Needs macOS 13 or later.
 
-**Download:** grab `Casio-MIDI-Bridge-<version>.zip` from the
-[latest release](https://github.com/command-paul/casio-midi-bridge/releases/latest), unzip,
-drag the app to Applications, open it. See the Gatekeeper note below for the first launch.
-
 ## The app (recommended)
 
 ![Casio MIDI Bridge window](docs/app-screenshot.png)
@@ -29,10 +25,26 @@ drag the app to Applications, open it. See the Gatekeeper note below for the fir
 **Casio MIDI Bridge.app** is a small window you open when you want to play. It shows
 whether the keyboard is connected, the name of the MIDI port to pick in your music app,
 live counters and the last message in each direction, a button that plays a few test notes
-on the keyboard, and an "Open at login" switch. Quit it (or close the window) and the
-keyboard is disconnected again. Nothing runs in the background unless you ask for it.
+on the keyboard, and an "Open at login" switch. Close the window and it keeps running as a
+piano-keys icon in the menu bar; quit it and the keyboard is disconnected again.
 
-Build and install it with Xcode Command Line Tools (`xcode-select --install`):
+### Option 1: download the app (no building needed)
+
+1. Get `Casio-MIDI-Bridge-<version>.zip` from the
+   [latest release](https://github.com/command-paul/casio-midi-bridge/releases/latest).
+2. Unzip it and drag **Casio MIDI Bridge** into your Applications folder.
+3. First launch only: **right-click the app → Open → Open.** macOS shows a "cannot verify
+   the developer" warning because the app is not notarized with a paid Apple Developer ID.
+   After that one-time step it opens normally. (Equivalent from a terminal:
+   `xattr -d com.apple.quarantine "/Applications/Casio MIDI Bridge.app"`.)
+
+The app is self-contained: no installer, no extra files, nothing else gets modified.
+Delete it from Applications to uninstall.
+
+### Option 2: build from source
+
+Needs Xcode Command Line Tools (`xcode-select --install`), nothing else. Building yourself
+also sidesteps the Gatekeeper warning.
 
 ```bash
 git clone https://github.com/command-paul/casio-midi-bridge.git
@@ -40,18 +52,18 @@ cd casio-midi-bridge
 make install-app        # builds, copies to /Applications, opens it
 ```
 
+`make uninstall-app` removes it.
+
+### Using it
+
 Plug in the keyboard, switch it on, and the port **"Casio USB MIDI"** appears (rename it in
-the app if you like). In GarageBand, add a Software Instrument track and play. In Logic the
-port is listed under Settings → MIDI → Inputs. Audio MIDI Setup → Window → Show MIDI Studio
-shows it too.
+the app if you like). In GarageBand, add a Software Instrument track and play; GarageBand
+does not list input names, it just reports "1 MIDI input detected" under Settings →
+Audio/MIDI. In Logic the port is listed under Settings → MIDI → Inputs. Audio MIDI Setup →
+Window → Show MIDI Studio shows it too.
 
 Both directions work: notes and controllers go in, and anything you send to the port
 (a MIDI file, a DAW track) plays on the keyboard's own sounds.
-
-Prebuilt downloads are not signed with an Apple Developer ID, so if you get one from a
-release page macOS will refuse to open it until you right-click → Open once, or run
-`xattr -d com.apple.quarantine "/Applications/Casio MIDI Bridge.app"`. Building from
-source avoids that entirely. `make uninstall-app` removes it.
 
 ## The headless service (advanced)
 
