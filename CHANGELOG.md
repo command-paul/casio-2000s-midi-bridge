@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+* Docs: Audio MIDI Setup's MIDI Studio never lists virtual ports, so it will not show the
+  bridge's port; corrected the README and troubleshooting guide. Removed the app's
+  "Open Audio MIDI Setup" button for the same reason.
+
 ## 0.3.0 — 2026-09-18
 
 * Renamed to **casio-2000s-midi-bridge** / **Casio 2000s MIDI Bridge.app** to make clear it

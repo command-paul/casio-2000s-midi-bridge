@@ -59,8 +59,9 @@ make install-app        # builds, copies to /Applications, opens it
 Plug in the keyboard, switch it on, and the port **"Casio USB MIDI"** appears (rename it in
 the app if you like). In GarageBand, add a Software Instrument track and play; GarageBand
 does not list input names, it just reports "1 MIDI input detected" under Settings →
-Audio/MIDI. In Logic the port is listed under Settings → MIDI → Inputs. Audio MIDI Setup →
-Window → Show MIDI Studio shows it too.
+Audio/MIDI. In Logic the port is listed under Settings → MIDI → Inputs. Note that Audio MIDI Setup's MIDI Studio
+window will *not* list it: MIDI Studio only shows hardware and driver devices, never the
+virtual ports apps create, and that's what this is. Music apps see it all the same.
 
 Both directions work: notes and controllers go in, and anything you send to the port
 (a MIDI file, a DAW track) plays on the keyboard's own sounds.

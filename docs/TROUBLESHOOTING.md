@@ -9,8 +9,15 @@ That's the problem this project exists for. Casio keyboards from roughly 2001–
 `07CF:6802`: LK, CTK, WK, PX, AP, CDP models with a USB port and no "class compliant" claim)
 identify themselves as a vendor-specific USB device, so macOS never creates a MIDI port
 for them. System Information → USB shows the device; Audio MIDI Setup shows nothing.
-Install [Casio 2000s MIDI Bridge](../README.md#the-app-recommended); the port appears while the
-app is running.
+Install [Casio 2000s MIDI Bridge](../README.md#the-app-recommended); while the app is
+running, every music app sees a MIDI port for the keyboard.
+
+One thing to know: **the port still won't appear in Audio MIDI Setup's MIDI Studio
+window**, even with the bridge working. MIDI Studio only shows hardware and driver
+devices; the bridge creates a *virtual* port, the same kind GarageBand, Logic and every
+DAW create for themselves, and MIDI Studio never lists those. To confirm it's working,
+look at the app window (the Activity section shows notes as you play) or at GarageBand's
+"MIDI input detected" count under Settings → Audio/MIDI.
 
 Keyboards from about 2011 on (CT-X, CT-S, PX-S, newer Privia, and anything whose manual
 says "class compliant") don't need this. They show up on their own.

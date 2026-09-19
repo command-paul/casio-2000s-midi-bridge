@@ -167,9 +167,6 @@ final class BridgeModel: ObservableObject {
         }
     }
 
-    func openAudioMIDISetup() {
-        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Audio MIDI Setup.app"))
-    }
 }
 
 // MARK: - Helpers
@@ -222,7 +219,6 @@ struct ContentView: View {
             activityBox
             HStack {
                 Button("Play test notes on keyboard") { model.playTestNotes() }.disabled(!connected)
-                Button("Open Audio MIDI Setup") { model.openAudioMIDISetup() }
                 Spacer()
             }
             Toggle("Open at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
