@@ -29,7 +29,7 @@ all: $(BINS)
 $(BUILD):
 	mkdir -p $@
 
-$(BUILD)/bridge.o: src/bridge.c src/bridge.h src/usbmidi.h | $(BUILD)
+$(BUILD)/bridge.o: src/bridge.c src/bridge.h src/usbmidi.h Makefile | $(BUILD)
 	$(CC) $(CFLAGS) -c src/bridge.c -o $@
 
 $(BUILD)/$(NAME): src/cli.c src/bridge.h $(BUILD)/bridge.o
