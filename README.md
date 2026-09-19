@@ -5,12 +5,12 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Makes old Casio USB keyboards work as MIDI controllers on modern macOS.
+An independent project, not affiliated with or endorsed by Casio.
 
 Casio keyboards sold from roughly 2001 to 2010 (LK-90TV, LK-100, CTK-691, WK-3000,
 PX-100, AP-series and many more) all share USB ID `07CF:6802` and are **not USB-MIDI
 class compliant**. They plug in, they enumerate, and then nothing happens: no port in
-Audio MIDI Setup, nothing in GarageBand or Logic. Casio's driver only ever supported
-Mac OS X 10.2–10.4 on PowerPC.
+Audio MIDI Setup, nothing in GarageBand or Logic. There is no macOS driver for them.
 
 `casio-midi-bridge` is a small user-space program that talks to the keyboard directly
 over USB and exposes it as a normal CoreMIDI port. No kernel extension, no `sudo`, no
@@ -169,7 +169,7 @@ device and confirm the wire format.
   <https://github.com/francoisferland/casiousbmididriver/issues/28>
 * Apple Community thread on Casio USB-MIDI drivers:
   <https://discussions.apple.com/thread/1198971>
-* Casio's own (discontinued) USB MIDI driver page:
+* Casio's USB driver support page, which lists no macOS driver for these models:
   <https://support.casio.com/en/support/osdevicePage.php?cid=008002001>
 * Apple documentation for IOUSBLib (`IOUSBDeviceInterface`, `IOUSBInterfaceInterface`) and
   CoreMIDI virtual endpoints (`MIDISourceCreate`, `MIDIDestinationCreate`).
@@ -188,6 +188,14 @@ for how to report a problem.
   CoreMIDI plugin driver that kept these keyboards usable for years.
 * The code was written with the help of Claude (Anthropic), which is noted in the commit
   trailers.
+
+## Not affiliated with Casio
+
+This is an independent community project. Casio is a trademark of Casio Computer Co., Ltd.,
+and the name is used here only to say which keyboards the software works with. Casio has
+not reviewed, endorsed, or supported it, and Casio support will not help you with it.
+Nothing here modifies the keyboard; if something goes wrong, the worst case is that no MIDI
+port appears. The software is provided as is, without warranty, under the MIT license.
 
 ## License
 

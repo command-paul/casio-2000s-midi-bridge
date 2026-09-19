@@ -226,7 +226,7 @@ struct ContentView: View {
                 Spacer()
             }
             Toggle("Open at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
-            Text("Closing this window keeps the bridge running in the menu bar (look for the piano keys icon). Quit to disconnect the keyboard.  ·  v\(version)")
+            Text("Closing this window keeps the bridge running in the menu bar (look for the piano keys icon). Quit to disconnect the keyboard.  ·  Not affiliated with Casio  ·  v\(version)")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
