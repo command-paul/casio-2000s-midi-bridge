@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 — 2026-09-18
 
 * Docs: Audio MIDI Setup's MIDI Studio never lists virtual ports, so it will not show the
   bridge's port; corrected the README and troubleshooting guide. Removed the app's

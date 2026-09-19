@@ -1,6 +1,6 @@
 # casio-2000s-midi-bridge — see README.md
 NAME      := casio-2000s-midi-bridge
-VERSION   := 0.3.0
+VERSION   := 0.3.1
 PREFIX    ?= $(HOME)/.local
 BINDIR    := $(PREFIX)/bin
 PORT_NAME ?= Casio USB MIDI
