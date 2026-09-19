@@ -79,6 +79,12 @@ make install PORT_NAME="Casio LK-90TV"  # custom port name
 Only one program can own the keyboard at a time. If the service is running when you open
 the app, the app says so and offers to stop it.
 
+## Something not working?
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md): keyboard not detected, "in use by
+another program", GarageBand's "2 MIDI inputs detected", doubled notes, Gatekeeper
+warnings, latency, and where the logs are.
+
 ## Manage the service
 
 ```bash
