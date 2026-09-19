@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-09-18
 
 * App: menu bar icon and menu; closing the window keeps the bridge running, Quit disconnects.
 * App: `--snapshot <png>` renders the window for documentation (`make screenshot`).
 * Release workflow pinned by commit, CI runs with read-only token, Dependabot for actions.
 * Issue/PR templates, SECURITY.md, CODE_OF_CONDUCT.md, .editorconfig.
 * Fixed a leaked IOKit interest notification when a busy keyboard was later acquired.
+* docs/TROUBLESHOOTING.md.
 
 ## 0.1.0 — 2026-09-18
 
